@@ -41,3 +41,17 @@ Compared with the reference platform:
 - **Freshness:** about 2 minutes or better on the live path, since a BigQuery subscription writes events directly. The Ops view must read the live table directly, because a cached dashboard could break the target.
 - **Complexity:** two paths to build and monitor, plus a dead-letter topic and an alert. The "on time" rule (arrival at most 24 hours after plan) is defined once, in a shared view, and used by both layers.
 - **What gets harder:** keeping live and batch numbers consistent, and handling duplicate or late events without distorting the live view. If event volume or budget grows, we would revisit Kappa.
+
+## Cost estimate (assumes about 2 events/s, 400 bytes each, about 2 GB a month)
+| Box | Estimate per month |
+|---|---|
+| Pub/Sub topic and dead-letter | $0 (inside the 10 GiB free tier) |
+| BigQuery subscription | $0.10 to $0.25 ($50 per TiB) |
+| BigQuery live storage | $0 (inside the 10 GiB free tier) |
+| Cloud Storage raw bucket | under $0.05 |
+| Scheduled SQL and curated tables | $0 (inside the 1 TiB free query tier) |
+| Ops view alert | $0 to $1 |
+| Dashboard queries | $0 if partitioned and filtered, about $30 if it rescans an unpartitioned table every refresh |
+| **Total** | **about $1 to $3**, fits the $50 budget |
+
+Prices from Google Cloud pricing pages for BigQuery and Pub/Sub, to be checked for europe-west3 in the pricing calculator. This is an estimate. The main risk is dashboard query volume, so the live table is partitioned by event time and the Ops view reads a small summary view. The crossed-out Kafka, Dataflow streaming and Dataproc would each bill hourly and could exceed the budget alone.
